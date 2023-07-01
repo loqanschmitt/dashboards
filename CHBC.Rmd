@@ -1,0 +1,134 @@
+---
+title: "Bicycle Crashes in Chapel Hill, NC (2007-2018)"
+author: LK Schmitt
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(readr)
+library(dplyr)
+library(leaflet)
+library(plotly)
+```
+
+```{r, include=FALSE}
+Crashes = read_csv("NCDOT_BikePedCrash.csv")
+Crashes2 = Crashes %>%
+  filter(City == "Chapel Hill")
+Crashes2
+```
+
+```{r, include=FALSE}
+Crashes2$color = ifelse(Crashes2$BikeInjury == "B: Suspected Minor Injury", "orange",
+                          ifelse(Crashes2$BikeInjury == "C: Possible Injury", "yellow",
+                                 ifelse(Crashes2$BikeInjury == "A: Suspected Serious Injury", "red",
+                                        ifelse(Crashes2$BikeInjury == "Unknown Injury", "grey",
+                                               ifelse(Crashes2$BikeInjury == "O: No Injury", "green", "black")))))
+
+Ages = Crashes2 %>% 
+  count(BikeAgeGrp)
+txt = paste(Ages$n, Ages$BikeAgeGrp, sep = "\n")
+
+xform = list(categoryorder="array",
+             categoryarray = c('6-10', 
+                               '11-15', 
+                               '16-19', 
+                               '20-24', 
+                               '25-29', 
+                               '30-39', 
+                               '40-49', 
+                               '50-59', 
+                               '60-69', 
+                               '70+', 
+                               'Unknown'))
+
+Day = Crashes2 %>% 
+  count(CrashDay)
+txt2 = paste(Day$n, Day$CrashDay, sep = "\n")
+
+xform2 = list(categoryorder="array",
+             categoryarray = c('Sunday',
+                               'Monday',
+                               'Tuesday',
+                               'Wednesday',
+                               'Thursday',
+                               'Friday',
+                               'Saturday'))
+```
+
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### All Bike Crash Locations
+
+```{r}
+leaflet() %>% 
+  addTiles() %>%
+  addCircleMarkers(lng = Crashes2$Longitude, 
+                   lat = Crashes2$Latitude, 
+                   color = Crashes2$color,
+                   radius = 6, 
+                   fill = T,
+                   fillOpacity = 0.2,
+                   opacity = 0.6,
+                   popup = paste(Crashes2$BikeAge,
+                                 Crashes2$BikeSex,
+                                 sep = ", ")) %>%
+  addLegend("bottomleft",
+          colors = c("orange",
+                     "yellow", 
+                     "red",
+                     "grey",
+                     "green", 
+                     "black"),
+          labels = c("Suspected Minor Injury",
+                       "Possible Injury",
+                       "Suspected Serious Injury",
+                       "Unknown Injury",
+                       "No Injury",
+                       "Killed"), 
+            opacity = 0.8)
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Age Groups of Bicyclists
+
+```{r}
+plot_ly(Ages,
+  type = "bar",
+  x = ~BikeAgeGrp, y = ~n,
+  color = ~BikeAgeGrp,
+  text = txt,
+  hoverinfo = "text") %>%
+  layout(xaxis = xform,
+         showlegend = FALSE,
+         xaxis = list(showline = F, showticklabels = F, fixedrange = T, title = ""),
+         yaxis = list(showline = F, showticklabels = F, fixedrange = T, title = "")
+)
+```
+
+### Days of the Week Crashes Occur
+
+```{r}
+plot_ly(Day,
+  type = "bar",
+  x = ~CrashDay, y = ~n,
+  color = ~CrashDay,
+  text = txt2,
+  hoverinfo = "text") %>%
+  layout(xaxis = xform2,
+         showlegend = FALSE,
+         xaxis = list(showline = F, showticklabels = F, fixedrange = T, title = ""),
+         yaxis = list(fixedrange = T, title = F)
+)
+```
+
